@@ -15,7 +15,7 @@ let package = Package(
     dependencies: [],
     targets: [
         .executableTarget(
-            name: "EmpathyLabApp",
+            name: "EmzpathyLabApp",
             dependencies: [],
             path: "Sources/EmpathyLabApp",
             resources: [

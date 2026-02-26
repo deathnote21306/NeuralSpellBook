@@ -1,24 +1,52 @@
 import SwiftUI
 
 public struct ResultsView: View {
-    public let onContinue: () -> Void
-    public let onBackToHome: () -> Void
+    public let onTryFix: () -> Void
+    public let onBackHome: () -> Void
 
     public init(
-        onContinue: @escaping () -> Void,
-        onBackToHome: @escaping () -> Void
+        onTryFix: @escaping () -> Void,
+        onBackHome: @escaping () -> Void
     ) {
-        self.onContinue = onContinue
-        self.onBackToHome = onBackToHome
+        self.onTryFix = onTryFix
+        self.onBackHome = onBackHome
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             Text("Results")
                 .font(.largeTitle)
-            Button("Continue", action: onContinue)
-            Button("Back to Home", action: onBackToHome)
+                .fontWeight(.semibold)
+
+            HStack(spacing: 12) {
+                metricCard(title: "Time", value: "42s")
+                metricCard(title: "Errors", value: "5")
+                metricCard(title: "Undo", value: "2")
+            }
+
+            Button("Try the Fix", action: onTryFix)
+                .buttonStyle(.borderedProminent)
+
+            Button("Back to Home", action: onBackHome)
+                .buttonStyle(.bordered)
+
+            Spacer()
         }
+        .padding(24)
+    }
+
+    private func metricCard(title: String, value: String) -> some View {
+        VStack(spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.title2)
+                .fontWeight(.semibold)
+        }
+        .frame(maxWidth: .infinity)
         .padding()
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

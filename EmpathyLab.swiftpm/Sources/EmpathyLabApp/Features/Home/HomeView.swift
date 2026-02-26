@@ -2,23 +2,32 @@ import SwiftUI
 
 public struct HomeView: View {
     public let onStartExperience: () -> Void
-    public let onShowAbout: () -> Void
+    public let onOpenAbout: () -> Void
 
     public init(
         onStartExperience: @escaping () -> Void,
-        onShowAbout: @escaping () -> Void
+        onOpenAbout: @escaping () -> Void
     ) {
         self.onStartExperience = onStartExperience
-        self.onShowAbout = onShowAbout
+        self.onOpenAbout = onOpenAbout
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
+            Spacer()
+
             Text("Empathy Lab")
                 .font(.largeTitle)
-            Button("Start Experience", action: onStartExperience)
-            Button("About", action: onShowAbout)
+                .fontWeight(.semibold)
+
+            Button("Experience (3 min)", action: onStartExperience)
+                .buttonStyle(.borderedProminent)
+
+            Button("About & Ethics", action: onOpenAbout)
+                .buttonStyle(.bordered)
+
+            Spacer()
         }
-        .padding()
+        .padding(24)
     }
 }

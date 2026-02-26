@@ -1,26 +1,35 @@
 import SwiftUI
 
 public struct LabPayBillView: View {
-    public let onFinish: () -> Void
-    public let onBack: () -> Void
+    public let onFinishLab: () -> Void
 
-    public init(
-        onFinish: @escaping () -> Void,
-        onBack: @escaping () -> Void
-    ) {
-        self.onFinish = onFinish
-        self.onBack = onBack
+    @State private var amount = ""
+    @State private var dueDate = Date()
+
+    public init(onFinishLab: @escaping () -> Void) {
+        self.onFinishLab = onFinishLab
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
-            Text("Lab")
+        VStack(spacing: 20) {
+            Text("Lab: Pay a Bill (Before)")
                 .font(.largeTitle)
-            Button("Finish", action: onFinish)
-            Button("Back", action: onBack)
+                .fontWeight(.semibold)
+
+            VStack(spacing: 12) {
+                TextField("Amount", text: $amount)
+                    .textFieldStyle(.roundedBorder)
+                DatePicker("Due Date", selection: $dueDate, displayedComponents: .date)
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            Button("Finish Lab", action: onFinishLab)
+                .buttonStyle(.borderedProminent)
+
+            Spacer()
         }
-        .padding()
+        .padding(24)
     }
 }
-
-public typealias LabView = LabPayBillView

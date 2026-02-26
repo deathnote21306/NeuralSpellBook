@@ -1,25 +1,35 @@
 import SwiftUI
 
 public struct SafetySheetView: View {
-    public let onContinue: () -> Void
+    public let onStart: () -> Void
     public let onCancel: () -> Void
 
     public init(
-        onContinue: @escaping () -> Void,
+        onStart: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) {
-        self.onContinue = onContinue
+        self.onStart = onStart
         self.onCancel = onCancel
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
-            Text("Safety Check")
-                .font(.title)
-            Text("You can stop at any time.")
-            Button("Continue", action: onContinue)
-            Button("Cancel", action: onCancel)
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Safety Notice")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("This simulation may feel visually or physically demanding. You can stop at any time.")
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.bordered)
+
+                Button("Start", action: onStart)
+                    .buttonStyle(.borderedProminent)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding()
+        .padding(24)
     }
 }

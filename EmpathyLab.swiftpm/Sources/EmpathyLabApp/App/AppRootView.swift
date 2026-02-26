@@ -13,7 +13,6 @@ struct AppRootView: View {
 
     @State private var path = NavigationPath()
     @State private var isSafetySheetPresented = false
-    @State private var pendingRouteAfterSafety: Route?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -21,7 +20,7 @@ struct AppRootView: View {
                 onStartExperience: {
                     push(.selection)
                 },
-                onShowAbout: {
+                onOpenAbout: {
                     push(.about)
                 }
             )
@@ -30,16 +29,12 @@ struct AppRootView: View {
             }
             .sheet(isPresented: $isSafetySheetPresented) {
                 SafetySheetView(
-                    onContinue: {
+                    onStart: {
                         isSafetySheetPresented = false
-                        if let pendingRouteAfterSafety {
-                            push(pendingRouteAfterSafety)
-                            self.pendingRouteAfterSafety = nil
-                        }
+                        push(.lab)
                     },
                     onCancel: {
                         isSafetySheetPresented = false
-                        pendingRouteAfterSafety = nil
                     }
                 )
             }
@@ -54,55 +49,52 @@ struct AppRootView: View {
                 onStartExperience: {
                     push(.selection)
                 },
-                onShowAbout: {
+                onOpenAbout: {
                     push(.about)
                 }
             )
         case .selection:
             SelectionView(
-                onContinueToLab: {
-                    pendingRouteAfterSafety = .lab
+                onContinueToSafety: {
                     isSafetySheetPresented = true
-                },
-                onShowAbout: {
-                    push(.about)
-                }
-            )
-        case .lab:
-            LabView(
-                onFinish: {
-                    push(.results)
                 },
                 onBack: {
                     pop()
+                }
+            )
+        case .lab:
+            LabPayBillView(
+                onFinishLab: {
+                    push(.results)
                 }
             )
         case .results:
             ResultsView(
-                onContinue: {
+                onTryFix: {
                     push(.designFix)
                 },
-                onBackToHome: {
+                onBackHome: {
                     popToRoot()
                 }
             )
         case .designFix:
-            DesignFixView(
-                onContinue: {
+            DesignFixPayBillView(
+                onFinishFix: {
                     push(.debrief)
-                },
-                onBack: {
-                    pop()
                 }
             )
         case .debrief:
             DebriefView(
-                onDone: {
+                onBackHome: {
                     popToRoot()
                 }
             )
         case .about:
-            AboutView()
+            AboutView(
+                onBack: {
+                    pop()
+                }
+            )
         }
     }
 

@@ -15,4 +15,4 @@ DerivedData/
 
 # Playgrounds metadata (keep if needed, but usually safe to ignore)
 timeline.xctimeline
-playground.xcworkspace
+playground.xcworkspace.swiftpm/xcode/xcuserdata/

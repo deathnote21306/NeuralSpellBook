@@ -21,7 +21,7 @@ struct AppRootView: View {
                 onStartExperience: {
                     push(.selection)
                 },
-                onShowAbout: {
+                onOpenAbout: {
                     push(.about)
                 }
             )
@@ -30,7 +30,7 @@ struct AppRootView: View {
             }
             .sheet(isPresented: $isSafetySheetPresented) {
                 SafetySheetView(
-                    onContinue: {
+                    onStart: {
                         isSafetySheetPresented = false
                         if let pendingRouteAfterSafety {
                             push(pendingRouteAfterSafety)
@@ -54,40 +54,37 @@ struct AppRootView: View {
                 onStartExperience: {
                     push(.selection)
                 },
-                onShowAbout: {
+                onOpenAbout: {
                     push(.about)
                 }
             )
         case .selection:
             SelectionView(
-                onContinueToLab: {
+                onContinueToSafety: {
                     pendingRouteAfterSafety = .lab
                     isSafetySheetPresented = true
                 },
-                onShowAbout: {
+                onBack: {
                     push(.about)
                 }
             )
         case .lab:
-            LabView(
-                onFinish: {
+            LabPayBillView(
+                onFinishLab: {
                     push(.results)
-                },
-                onBack: {
-                    pop()
                 }
             )
         case .results:
             ResultsView(
-                onContinue: {
+                onTryFix{
                     push(.designFix)
                 },
-                onBackToHome: {
+                onBackHome{
                     popToRoot()
                 }
             )
         case .designFix:
-            DesignFixView(
+            DesignFixPayBillView(
                 onContinue: {
                     push(.debrief)
                 },

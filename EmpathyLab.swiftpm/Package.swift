@@ -19,7 +19,7 @@ let package = Package(
             dependencies: [],
             path: "Sources/EmpathyLabApp",
             resources: [
-                .process("../../Resources")
+                .process("Resources")
             ]
         )
     ]

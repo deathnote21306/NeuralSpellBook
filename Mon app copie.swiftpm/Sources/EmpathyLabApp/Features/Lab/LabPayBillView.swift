@@ -3,9 +3,12 @@ import SwiftUI
 public struct LabPayBillView: View {
     public let onFinishLab: () -> Void
 
+    @StateObject private var metricsStore = MetricsStore.shared
+
     @State private var amountText = ""
     @State private var dueDate = Date()
-    @State private var ambiguousStatus = ""
+    @State private var feedbackText = ""
+    @State private var hasStarted = false
 
     public init(onFinishLab: @escaping () -> Void) {
         self.onFinishLab = onFinishLab
@@ -55,8 +58,8 @@ public struct LabPayBillView: View {
                     style: .lab
                 )
 
-                if !ambiguousStatus.isEmpty {
-                    Text(ambiguousStatus)
+                if !feedbackText.isEmpty {
+                    Text(feedbackText)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .padding(.top, 2)
@@ -68,16 +71,28 @@ public struct LabPayBillView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Stop") {
+                    metricsStore.finishLab()
                     onFinishLab()
                 }
                 .foregroundStyle(.red)
             }
         }
+        .onAppear {
+            guard !hasStarted else { return }
+            hasStarted = true
+            metricsStore.startLab()
+        }
     }
 
     private func confirmTapped() {
-        guard isAmountValid else { return }
-        ambiguousStatus = "Submitted..."
+        guard isAmountValid else {
+            metricsStore.registerLabError()
+            feedbackText = "Not quite..."
+            return
+        }
+
+        metricsStore.finishLab()
+        feedbackText = "Submitted..."
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             onFinishLab()
         }

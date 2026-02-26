@@ -4,9 +4,13 @@ public struct DesignFixPayBillView: View {
     public let onContinue: () -> Void
     public let onBack: () -> Void
 
+    @StateObject private var metricsStore = MetricsStore.shared
+
     @State private var amountText = ""
     @State private var dueDate = Date()
     @State private var showSuccess = false
+    @State private var validationMessage = ""
+    @State private var hasStarted = false
 
     public init(
         onContinue: @escaping () -> Void,
@@ -55,6 +59,12 @@ public struct DesignFixPayBillView: View {
                     style: .fix
                 )
 
+                if !validationMessage.isEmpty {
+                    Text(validationMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(.red)
+                }
+
                 if showSuccess {
                     Label("Payment confirmed.", systemImage: "checkmark.circle.fill")
                         .font(.headline)
@@ -73,13 +83,27 @@ public struct DesignFixPayBillView: View {
                 }
             }
         }
+        .onAppear {
+            guard !hasStarted else { return }
+            hasStarted = true
+            metricsStore.startFix()
+        }
     }
 
     private func confirmTapped() {
-        guard isAmountValid else { return }
+        guard isAmountValid else {
+            metricsStore.registerFixError()
+            validationMessage = "Please enter a valid amount greater than zero."
+            return
+        }
+
+        metricsStore.finishFix()
+        validationMessage = ""
+
         withAnimation(.easeInOut(duration: 0.2)) {
             showSuccess = true
         }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             onContinue()
         }

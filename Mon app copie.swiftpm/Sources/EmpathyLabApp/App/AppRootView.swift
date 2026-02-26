@@ -19,6 +19,7 @@ struct AppRootView: View {
         NavigationStack(path: $path) {
             HomeView(
                 onStartExperience: {
+                    MetricsStore.shared.resetAll()
                     push(.selection)
                 },
                 onShowAbout: {
@@ -52,6 +53,7 @@ struct AppRootView: View {
         case .home:
             HomeView(
                 onStartExperience: {
+                    MetricsStore.shared.resetAll()
                     push(.selection)
                 },
                 onShowAbout: {
@@ -69,25 +71,22 @@ struct AppRootView: View {
                 }
             )
         case .lab:
-            LabView(
-                onFinish: {
+            LabPayBillView(
+                onFinishLab: {
                     push(.results)
-                },
-                onBack: {
-                    pop()
                 }
             )
         case .results:
             ResultsView(
-                onContinue: {
+                onTryFix: {
                     push(.designFix)
                 },
-                onBackToHome: {
+                onBackHome: {
                     popToRoot()
                 }
             )
         case .designFix:
-            DesignFixView(
+            DesignFixPayBillView(
                 onContinue: {
                     push(.debrief)
                 },

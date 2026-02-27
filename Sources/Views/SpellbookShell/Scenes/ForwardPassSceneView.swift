@@ -272,11 +272,11 @@ struct ForwardPassSceneView: View {
         if reduceMotion {
             castProgress = 1
         } else {
-            withAnimation(.easeInOut(duration: 1.5)) { castProgress = 1 }
+            withAnimation(.easeInOut(duration: 2.0)) { castProgress = 1 }
         }
 
         Task {
-            try? await Task.sleep(nanoseconds: reduceMotion ? 220_000_000 : 1_550_000_000)
+            try? await Task.sleep(nanoseconds: reduceMotion ? 220_000_000 : 2_050_000_000)
             guard token == castToken else { return }
             await MainActor.run {
                 isCasting = false
@@ -437,7 +437,7 @@ private struct ForwardNetworkCanvasView: View {
         )
     }
 
-    // MARK: Edges — triple-layer stroke for beautiful visibility
+    // MARK: Edges — progressive ray extension with tip spark
 
     private func drawEdges(context: inout GraphicsContext, layout: ForwardNetworkLayout, timeline: TimeInterval) {
         let hasSelection = selectedNodeID != nil
@@ -450,68 +450,103 @@ private struct ForwardNetworkCanvasView: View {
             let fromColor = highlighted
                 ? Color(red: 0.91, green: 0.72, blue: 0.29)
                 : Color(red: 0.36, green: 0.19, blue: 1.0)
-            let toColor = Color(red: 0.24, green: 0.84, blue: 0.75)
-            let glowBase = highlighted
+            let toColor   = Color(red: 0.24, green: 0.84, blue: 0.75)
+            let glowBase  = highlighted
                 ? Color(red: 0.91, green: 0.72, blue: 0.29)
                 : Color(red: 0.49, green: 0.38, blue: 1.0)
 
-            // ── LAYER 1: Outer bloom (wide, soft — simulates glow) ────────
+            // ── Always show dim skeleton so the network is readable ────────
+            context.stroke(path,
+                           with: .color(glowBase.opacity(hasSelection ? (highlighted ? 0.22 : 0.02) : 0.05)),
+                           style: StrokeStyle(lineWidth: 1.0, lineCap: .round))
+
+            guard active > 0.005 || highlighted else { continue }
+
+            // ── Determine drawn path ───────────────────────────────────────
+            // During animation: trim from source node, extend progressively toward dest.
+            // After cast: draw full edge at settled opacity.
+            let rayProgress = isCasting ? active : 1.0
+            let drawnPath   = (isCasting && active < 0.995)
+                ? path.trimmedPath(from: 0, to: rayProgress)
+                : path
+
+            // ── LAYER 1: Outer bloom ───────────────────────────────────────
             let glowOp: Double
-            if highlighted        { glowOp = 0.30 }
-            else if hasSelection  { glowOp = 0.0  }
-            else                  { glowOp = 0.05 + active * 0.16 }
+            if highlighted       { glowOp = 0.30 }
+            else if hasSelection { glowOp = 0.0  }
+            else                 { glowOp = 0.05 + active * 0.16 }
 
             if glowOp > 0.005 {
-                context.stroke(path,
+                context.stroke(drawnPath,
                                with: .color(glowBase.opacity(glowOp)),
                                style: StrokeStyle(lineWidth: 9, lineCap: .round))
             }
 
-            // ── LAYER 2: Mid gradient — colour flows from layer to layer ──
+            // ── LAYER 2: Mid gradient ──────────────────────────────────────
             let midOp: Double
             if highlighted       { midOp = 0.88 }
             else if hasSelection { midOp = 0.04 }
             else                 { midOp = 0.28 + active * 0.52 }
 
-            let midWidth: CGFloat = highlighted
-                ? 3.2
-                : CGFloat(1.6 + active * 2.0)
-
             context.stroke(
-                path,
+                drawnPath,
                 with: .linearGradient(
                     Gradient(colors: [fromColor.opacity(midOp), toColor.opacity(midOp * 0.72)]),
-                    startPoint: edge.from.point,
-                    endPoint: edge.to.point
+                    startPoint: edge.from.point, endPoint: edge.to.point
                 ),
-                style: StrokeStyle(lineWidth: midWidth, lineCap: .round)
+                style: StrokeStyle(lineWidth: highlighted ? 3.2 : CGFloat(1.6 + active * 2.0), lineCap: .round)
             )
 
-            // ── LAYER 3: Bright core (thin, sharp) ─────────────────────────
+            // ── LAYER 3: Bright core ───────────────────────────────────────
             let coreOp: Double
             if highlighted       { coreOp = 0.95 }
             else if hasSelection { coreOp = 0.02 }
             else                 { coreOp = 0.20 + active * 0.48 }
 
             if coreOp > 0.02 {
-                context.stroke(path,
+                context.stroke(drawnPath,
                                with: .color(fromColor.opacity(coreOp * 0.75)),
                                style: StrokeStyle(lineWidth: 0.75, lineCap: .round))
             }
 
-            // ── Animated shimmer ripple (full-line, no dots) ───────────────
-            // Only show on active/highlighted edges to signal energy flow
+            // ── Tip spark — travels along the wire during cast ─────────────
+            if isCasting && active > 0.01 && active < 0.99 {
+                let tip     = point(on: edge, at: active)
+                let flicker = CGFloat(0.72 + 0.28 * sin(timeline * 14.0 + Double(edge.from.nodeIndex) * 0.9))
+                let sparkR  = 5.5 * flicker
+
+                // Bright inner core
+                context.fill(
+                    Path(ellipseIn: CGRect(x: tip.x - sparkR, y: tip.y - sparkR,
+                                          width: sparkR * 2, height: sparkR * 2)),
+                    with: .radialGradient(
+                        Gradient(colors: [Color.white.opacity(0.96), fromColor.opacity(0.75), .clear]),
+                        center: tip, startRadius: 0, endRadius: sparkR
+                    )
+                )
+                // Outer halo
+                context.fill(
+                    Path(ellipseIn: CGRect(x: tip.x - sparkR * 2.8, y: tip.y - sparkR * 2.8,
+                                          width: sparkR * 5.6, height: sparkR * 5.6)),
+                    with: .radialGradient(
+                        Gradient(colors: [fromColor.opacity(0.44 * flicker), .clear]),
+                        center: tip, startRadius: 0, endRadius: sparkR * 2.8
+                    )
+                )
+            }
+
+            // ── Shimmer ripple (settled or fully lit) ──────────────────────
             guard (active > 0.5 && !hasSelection) || highlighted else { continue }
             let shimmer = 0.15 + 0.15 * sin(timeline * 2.4 + Double(edge.to.layerIndex) * 1.1)
             context.stroke(
-                path,
+                drawnPath,
                 with: .linearGradient(
                     Gradient(colors: [
-                        (highlighted ? Color(red: 0.91, green: 0.72, blue: 0.29) : Color(red: 0.24, green: 0.84, blue: 0.75)).opacity(shimmer),
+                        (highlighted ? Color(red: 0.91, green: 0.72, blue: 0.29)
+                                     : Color(red: 0.24, green: 0.84, blue: 0.75)).opacity(shimmer),
                         Color.clear
                     ]),
-                    startPoint: edge.from.point,
-                    endPoint: edge.to.point
+                    startPoint: edge.from.point, endPoint: edge.to.point
                 ),
                 style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
             )

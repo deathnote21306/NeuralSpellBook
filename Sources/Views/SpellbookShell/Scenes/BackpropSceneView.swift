@@ -197,11 +197,11 @@ struct BackpropSceneView: View {
         if reduceMotion {
             ritualProgress = 1
         } else {
-            withAnimation(.easeInOut(duration: 1.65)) { ritualProgress = 1 }
+            withAnimation(.easeInOut(duration: 2.2)) { ritualProgress = 1 }
         }
 
         Task {
-            try? await Task.sleep(nanoseconds: reduceMotion ? 300_000_000 : 1_700_000_000)
+            try? await Task.sleep(nanoseconds: reduceMotion ? 300_000_000 : 2_250_000_000)
             await MainActor.run {
                 isAnimating = false
                 ritualDone = true
@@ -356,47 +356,93 @@ private struct BackpropCanvasView: View {
         let hasSelection = selectedLayerIndex != nil
 
         for edge in layout.edges {
-            let path = curvedPath(from: edge.from, to: edge.to)
+            let path     = curvedPath(from: edge.from, to: edge.to)
             let selected = (selectedLayerIndex == edge.segment || selectedLayerIndex == edge.segment + 1)
-            let wave = edgeWave(for: edge)
+            let wave     = edgeWave(for: edge)
 
-            // Base dim stroke
+            // ── Always show dim skeleton ───────────────────────────────────
             let baseOp: Double = hasSelection ? (selected ? 0.22 : 0.04) : 0.10
             context.stroke(path, with: .color(Color(red: 0.49, green: 0.38, blue: 1.0).opacity(baseOp)),
                            style: StrokeStyle(lineWidth: 1.0, lineCap: .round))
 
             guard wave > 0.01 else { continue }
 
-            // ── LAYER 1: Error glow (outer, wide) ─────────────────────────
+            // ── Determine drawn path ───────────────────────────────────────
+            // Error flows right→left: the ray starts at edge.to (output/right)
+            // and extends toward edge.from (input/left) as wave increases.
+            // path goes from edge.from (left) to edge.to (right),
+            // so trimmedPath(from: 1-wave, to: 1) draws the right-end portion.
+            let isProgressing = isAnimating && wave < 0.995
+            let drawnPath: Path = isProgressing
+                ? path.trimmedPath(from: 1.0 - wave, to: 1.0)
+                : path
+
+            // ── LAYER 1: Error glow ────────────────────────────────────────
             let glowOp: Double = hasSelection ? (selected ? 0.22 : 0.0) : 0.08 + wave * 0.14
             if glowOp > 0.01 {
-                context.stroke(path, with: .color(Color(red: 0.85, green: 0.19, blue: 0.38).opacity(glowOp)),
+                context.stroke(drawnPath,
+                               with: .color(Color(red: 0.85, green: 0.19, blue: 0.38).opacity(glowOp)),
                                style: StrokeStyle(lineWidth: 9, lineCap: .round))
             }
 
-            // ── LAYER 2: Error gradient mid stroke ─────────────────────────
+            // ── LAYER 2: Error gradient mid ────────────────────────────────
             let midOp: Double = hasSelection ? (selected ? 0.75 : 0.03) : 0.28 + wave * 0.55
-            context.stroke(path, with: .linearGradient(
+            context.stroke(drawnPath, with: .linearGradient(
                 Gradient(colors: [
                     Color(red: 0.85, green: 0.19, blue: 0.38).opacity(midOp),
-                    Color(red: 1.0, green: 0.42, blue: 0.21).opacity(midOp * 0.70),
+                    Color(red: 1.0,  green: 0.42, blue: 0.21).opacity(midOp * 0.70),
                     Color(red: 0.91, green: 0.72, blue: 0.29).opacity(midOp * 0.45)
                 ]),
-                startPoint: edge.to,   // error flows right→left
+                startPoint: edge.to,   // gradient: output→input direction
                 endPoint: edge.from
             ), style: StrokeStyle(lineWidth: 2.0 + wave * 1.8, lineCap: .round))
 
-            // ── LAYER 3: Bright core ────────────────────────────────────────
+            // ── LAYER 3: Bright core ───────────────────────────────────────
             let coreOp: Double = hasSelection ? (selected ? 0.85 : 0.01) : 0.22 + wave * 0.50
             if coreOp > 0.01 {
-                context.stroke(path, with: .color(Color(red: 0.85, green: 0.19, blue: 0.38).opacity(coreOp * 0.70)),
+                context.stroke(drawnPath,
+                               with: .color(Color(red: 0.85, green: 0.19, blue: 0.38).opacity(coreOp * 0.70)),
                                style: StrokeStyle(lineWidth: 0.8, lineCap: .round))
             }
 
-            // Shimmer ripple (no particles)
+            // ── Tip spark — travels from output toward input ───────────────
+            if isProgressing {
+                // Leading edge of the ray: starts at edge.to, moves toward edge.from
+                let tip = CGPoint(
+                    x: edge.to.x + CGFloat(wave) * (edge.from.x - edge.to.x),
+                    y: edge.to.y + CGFloat(wave) * (edge.from.y - edge.to.y)
+                )
+                let flicker = CGFloat(0.72 + 0.28 * sin(timeline * 14.0 + Double(edge.segment) * 1.3))
+                let sparkR  = 5.5 * flicker
+
+                // Bright inner core
+                context.fill(
+                    Path(ellipseIn: CGRect(x: tip.x - sparkR, y: tip.y - sparkR,
+                                          width: sparkR * 2, height: sparkR * 2)),
+                    with: .radialGradient(
+                        Gradient(colors: [Color.white.opacity(0.95),
+                                          Color(red: 0.85, green: 0.19, blue: 0.38).opacity(0.78),
+                                          .clear]),
+                        center: tip, startRadius: 0, endRadius: sparkR
+                    )
+                )
+                // Outer halo
+                context.fill(
+                    Path(ellipseIn: CGRect(x: tip.x - sparkR * 2.8, y: tip.y - sparkR * 2.8,
+                                          width: sparkR * 5.6, height: sparkR * 5.6)),
+                    with: .radialGradient(
+                        Gradient(colors: [Color(red: 0.85, green: 0.19, blue: 0.38).opacity(0.40 * flicker),
+                                          .clear]),
+                        center: tip, startRadius: 0, endRadius: sparkR * 2.8
+                    )
+                )
+            }
+
+            // ── Shimmer ripple (settled state) ─────────────────────────────
             if wave > 0.5 && !hasSelection {
                 let shimmer = 0.12 + 0.12 * sin(timeline * 2.2 + Double(edge.segment) * 1.5)
-                context.stroke(path, with: .color(Color(red: 0.85, green: 0.19, blue: 0.38).opacity(shimmer)),
+                context.stroke(drawnPath,
+                               with: .color(Color(red: 0.85, green: 0.19, blue: 0.38).opacity(shimmer)),
                                style: StrokeStyle(lineWidth: 2.0, lineCap: .round))
             }
         }

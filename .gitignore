@@ -1,24 +1,21 @@
+# Xcode / Swift Playgrounds
 .DS_Store
 *.xcuserstate
-*.xccheckout
-*.xcscmblueprint
-
-# Xcode
+xcuserdata/
+*.xcworkspace/xcuserdata/
 DerivedData/
-*.xcworkspace
-*.xcodeproj
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
 
-# SwiftPM
+# Swift Package Manager
 .build/
-.swiftpm/xcode/package.xcworkspace/
-.swiftpm/configuration/
-
-# Playgrounds metadata (keep if needed, but usually safe to ignore)
-timeline.xctimeline
-playground.xcworkspace.swiftpm/xcode/xcuserdata/
-
-# Xcode / Playgrounds generated
 .swiftpm/xcode/
-*.xcuserstate
-**/xcuserdata/
+
+# iCloud / macOS
 .DS_Store
+Icon?
+._*
+.Spotlight-V100
+.Trashes

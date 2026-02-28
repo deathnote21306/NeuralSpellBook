@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcrun simctl:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh api:*)",
+      "Bash(git:*)",
+      "Bash(brctl log:*)"
+    ]
+  }
+}

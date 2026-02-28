@@ -43,7 +43,7 @@ struct ForwardPassSceneView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var selectedNodeID: String?
-    @State private var castProgress: Double = 0
+    @State private var castStartTime: Date? = nil
     @State private var isCasting = false
     @State private var didCast = false
     @State private var castToken = UUID()
@@ -154,7 +154,7 @@ struct ForwardPassSceneView: View {
             ForwardNetworkCanvasView(
                 selectedNodeID: $selectedNodeID,
                 nodeData: nodeData,
-                castProgress: castProgress,
+                castStartTime: castStartTime,
                 didCast: didCast,
                 isCasting: isCasting
             )
@@ -252,7 +252,8 @@ struct ForwardPassSceneView: View {
     // MARK: - Logic
 
     private var currentCastBeat: String {
-        switch castProgress {
+        let t = castStartTime.map { min(1.0, Date().timeIntervalSince($0) / 2.0) } ?? 0
+        switch t {
         case ..<0.18: return "The spell wakes the input glyphs first — raw signals from the world."
         case ..<0.48: return "Hidden runes absorb and transform simple inputs into patterns."
         case ..<0.78: return "Deeper runes fuse those patterns into richer, layered evidence."
@@ -267,13 +268,7 @@ struct ForwardPassSceneView: View {
         selectedNodeID = nil
         didCast = false
         isCasting = true
-        castProgress = 0
-
-        if reduceMotion {
-            castProgress = 1
-        } else {
-            withAnimation(.easeInOut(duration: 2.0)) { castProgress = 1 }
-        }
+        castStartTime = Date()
 
         Task {
             try? await Task.sleep(nanoseconds: reduceMotion ? 220_000_000 : 2_050_000_000)
@@ -351,9 +346,17 @@ private struct ForwardNetworkCanvasView: View {
 
     @Binding var selectedNodeID: String?
     let nodeData: [[ForwardNodeSnapshot]]
-    let castProgress: Double
+    let castStartTime: Date?
     let didCast: Bool
     let isCasting: Bool
+
+    private func liveCastProgress(at date: Date) -> Double {
+        guard isCasting, let start = castStartTime else {
+            return didCast ? 1.0 : 0.0
+        }
+        let t = min(1.0, max(0, date.timeIntervalSince(start) / 2.0))
+        return t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -363,11 +366,14 @@ private struct ForwardNetworkCanvasView: View {
                 // Canvas: transparent so cosmic background shows through
                 TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
                     Canvas { context, _ in
+                        let cp = liveCastProgress(at: timeline.date)
                         drawGlow(context: &context, size: proxy.size)
                         drawEdges(context: &context, layout: layout,
-                                  timeline: timeline.date.timeIntervalSinceReferenceDate)
+                                  timeline: timeline.date.timeIntervalSinceReferenceDate,
+                                  castProgress: cp)
                         drawNodes(context: &context, layout: layout,
-                                  timeline: timeline.date.timeIntervalSinceReferenceDate)
+                                  timeline: timeline.date.timeIntervalSinceReferenceDate,
+                                  castProgress: cp)
                         drawLayerLabels(context: &context, layout: layout)
                     }
                 }
@@ -439,13 +445,13 @@ private struct ForwardNetworkCanvasView: View {
 
     // MARK: Edges — progressive ray extension with tip spark
 
-    private func drawEdges(context: inout GraphicsContext, layout: ForwardNetworkLayout, timeline: TimeInterval) {
+    private func drawEdges(context: inout GraphicsContext, layout: ForwardNetworkLayout, timeline: TimeInterval, castProgress: Double) {
         let hasSelection = selectedNodeID != nil
 
         for edge in layout.edges {
             let path = bezierPath(from: edge.from.point, to: edge.to.point)
             let highlighted = isHighlighted(edge: edge)
-            let active = edgeEnergy(for: edge)
+            let active = edgeEnergy(for: edge, castProgress: castProgress)
 
             let fromColor = highlighted
                 ? Color(red: 0.91, green: 0.72, blue: 0.29)
@@ -555,11 +561,11 @@ private struct ForwardNetworkCanvasView: View {
 
     // MARK: Nodes
 
-    private func drawNodes(context: inout GraphicsContext, layout: ForwardNetworkLayout, timeline: TimeInterval) {
+    private func drawNodes(context: inout GraphicsContext, layout: ForwardNetworkLayout, timeline: TimeInterval, castProgress: Double) {
         for node in layout.nodes {
             let highlighted = selectedNodeID == node.id
-            let reveal  = nodeReveal(for: node)
-            let pulse   = nodePulse(for: node, timeline: timeline)
+            let reveal  = nodeReveal(for: node, castProgress: castProgress)
+            let pulse   = nodePulse(for: node, timeline: timeline, castProgress: castProgress)
             let radius  = 10.0 + reveal * 6.0 + pulse * 2.2 + (highlighted ? 3.5 : 0)
             let tint    = highlighted ? Color(red: 0.91, green: 0.72, blue: 0.29) : node.kind.tint
 
@@ -667,14 +673,14 @@ private struct ForwardNetworkCanvasView: View {
         )
     }
 
-    private func nodeReveal(for node: ForwardRenderNode) -> CGFloat {
+    private func nodeReveal(for node: ForwardRenderNode, castProgress: Double) -> CGFloat {
         if didCast && !isCasting { return CGFloat(node.activation) }
         let window = layerWindow(for: node.layerIndex)
         let progress = max(0, min(1, (castProgress - window.start) / window.length))
         return CGFloat(node.activation) * progress
     }
 
-    private func nodePulse(for node: ForwardRenderNode, timeline: TimeInterval) -> CGFloat {
+    private func nodePulse(for node: ForwardRenderNode, timeline: TimeInterval, castProgress: Double) -> CGFloat {
         let window = layerWindow(for: node.layerIndex)
         let local  = max(0, min(1, (castProgress - window.start) / window.length))
         let burst   = CGFloat(sin(local * .pi))
@@ -684,7 +690,7 @@ private struct ForwardNetworkCanvasView: View {
         return max(burst, settled)
     }
 
-    private func edgeEnergy(for edge: ForwardEdge) -> Double {
+    private func edgeEnergy(for edge: ForwardEdge, castProgress: Double) -> Double {
         if didCast && !isCasting { return 0.58 + edge.to.activation * 0.24 }
         let window = layerWindow(for: edge.to.layerIndex)
         guard castProgress > window.start else { return 0 }

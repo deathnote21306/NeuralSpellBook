@@ -19,6 +19,7 @@ struct BackpropSceneView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var ritualProgress: Double = 0
+    @State private var ritualStartTime: Date? = nil
     @State private var ritualDone = false
     @State private var isAnimating = false
     @State private var selectedLayerIndex: Int? = nil   // tapped layer for blame detail
@@ -70,7 +71,7 @@ struct BackpropSceneView: View {
 
             // Full-screen canvas
             BackpropCanvasView(
-                progress: ritualProgress,
+                ritualStartTime: ritualStartTime,
                 ritualDone: ritualDone,
                 isAnimating: isAnimating,
                 selectedLayerIndex: selectedLayerIndex,
@@ -193,12 +194,7 @@ struct BackpropSceneView: View {
         selectedLayerIndex = nil
         ritualProgress = 0
         isAnimating = true
-
-        if reduceMotion {
-            ritualProgress = 1
-        } else {
-            withAnimation(.easeInOut(duration: 2.2)) { ritualProgress = 1 }
-        }
+        ritualStartTime = Date()
 
         Task {
             try? await Task.sleep(nanoseconds: reduceMotion ? 300_000_000 : 2_250_000_000)
@@ -309,11 +305,19 @@ private struct BackpropAmbientView: View {
 private struct BackpropCanvasView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    let progress: Double
+    let ritualStartTime: Date?
     let ritualDone: Bool
     let isAnimating: Bool
     let selectedLayerIndex: Int?
     let onTapLayer: (Int) -> Void
+
+    private func liveProgress(at date: Date) -> Double {
+        guard isAnimating, let start = ritualStartTime else {
+            return ritualDone ? 1.0 : 0.0
+        }
+        let t = min(1.0, max(0, date.timeIntervalSince(start) / 2.2))
+        return t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
+    }
 
     private let layers = [3, 4, 4, 2]
 
@@ -324,10 +328,13 @@ private struct BackpropCanvasView: View {
             ZStack {
                 TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
                     Canvas { context, _ in
+                        let p = liveProgress(at: timeline.date)
                         drawEdges(context: &context, layout: layout,
-                                  timeline: timeline.date.timeIntervalSinceReferenceDate)
+                                  timeline: timeline.date.timeIntervalSinceReferenceDate,
+                                  progress: p)
                         drawNodes(context: &context, layout: layout,
-                                  timeline: timeline.date.timeIntervalSinceReferenceDate)
+                                  timeline: timeline.date.timeIntervalSinceReferenceDate,
+                                  progress: p)
                         drawLabels(context: &context, layout: layout)
                     }
                 }
@@ -352,13 +359,13 @@ private struct BackpropCanvasView: View {
         }
     }
 
-    private func drawEdges(context: inout GraphicsContext, layout: BackpropNetworkLayout, timeline: TimeInterval) {
+    private func drawEdges(context: inout GraphicsContext, layout: BackpropNetworkLayout, timeline: TimeInterval, progress: Double) {
         let hasSelection = selectedLayerIndex != nil
 
         for edge in layout.edges {
             let path     = curvedPath(from: edge.from, to: edge.to)
             let selected = (selectedLayerIndex == edge.segment || selectedLayerIndex == edge.segment + 1)
-            let wave     = edgeWave(for: edge)
+            let wave     = edgeWave(for: edge, progress: progress)
 
             // ── Always show dim skeleton ───────────────────────────────────
             let baseOp: Double = hasSelection ? (selected ? 0.22 : 0.04) : 0.10
@@ -448,11 +455,11 @@ private struct BackpropCanvasView: View {
         }
     }
 
-    private func drawNodes(context: inout GraphicsContext, layout: BackpropNetworkLayout, timeline: TimeInterval) {
+    private func drawNodes(context: inout GraphicsContext, layout: BackpropNetworkLayout, timeline: TimeInterval, progress: Double) {
         let hasSelection = selectedLayerIndex != nil
 
         for node in layout.nodes {
-            let blame = nodeBlame(for: node)
+            let blame = nodeBlame(for: node, progress: progress)
             let isSelectedLayer = selectedLayerIndex == node.layerIndex
             let radius: CGFloat = 9.5 + blame * 5 + (isSelectedLayer ? 3 : 0)
             let tint = blame > 0.2 ? Color(red: 0.85, green: 0.19, blue: 0.38) : Color(red: 0.49, green: 0.38, blue: 1.0)
@@ -573,7 +580,7 @@ private struct BackpropCanvasView: View {
         return path
     }
 
-    private func edgeWave(for edge: BackpropEdge) -> Double {
+    private func edgeWave(for edge: BackpropEdge, progress: Double) -> Double {
         if ritualDone && !isAnimating { return 1 }
         let windows: [(Double, Double)] = [(0.70, 0.20), (0.44, 0.24), (0.18, 0.24)]
         guard edge.segment < windows.count else { return 0 }
@@ -581,7 +588,7 @@ private struct BackpropCanvasView: View {
         return max(0, min(1, (progress - window.0) / window.1))
     }
 
-    private func nodeBlame(for node: BackpropNode) -> CGFloat {
+    private func nodeBlame(for node: BackpropNode, progress: Double) -> CGFloat {
         if ritualDone && !isAnimating {
             return [0.30, 0.46, 0.62, 0.86][node.layerIndex]
         }

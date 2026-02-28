@@ -6,11 +6,11 @@ struct IntroBackpropSceneView: View {
     var body: some View {
         IntroBeatSceneTemplate(
             canvas: { IntroBeat2Canvas() },
-            tag: "Chapter III · Coming Up",
-            headline: "The error flows\nbackwards.",
-            bodyText: "We know the loss — now we must fix it. Backpropagation traces the error back through every layer, assigning each weight its share of blame, then nudging them all in the right direction. This is how the network actually learns.",
-            analogy: "✦ Every AI weight ever trained was adjusted this way",
-            buttonTitle: "Begin Chapter III →",
+            chapterNumber: 3,
+            chapterTitle: "How AI\nActually Learns",
+            missionText: "Watch the error trace backward through every layer and nudge each connection closer to the right answer.",
+            whyText: "This is literally how every AI on the planet learns from its mistakes — including GPT and everything after it.",
+            buttonTitle: "PLAY CHAPTER III",
             onBegin: onBegin
         )
     }

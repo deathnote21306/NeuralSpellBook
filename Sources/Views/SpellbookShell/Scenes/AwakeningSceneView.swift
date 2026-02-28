@@ -4,48 +4,98 @@ struct AwakeningSceneView: View {
     let onActivate: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var quoteOpacity: Double = 0
     @State private var isNavigating = false
     @State private var rippleID: UUID? = nil
 
+    // Staggered entrance
+    @State private var showTitle    = false
+    @State private var showSub      = false
+    @State private var showCircle   = false
+    @State private var showHint     = false
+    @State private var showChapters = false
+
+    private let gold    = Color(red: 0.91, green: 0.72, blue: 0.29)
+    private let mana    = Color(red: 0.49, green: 0.38, blue: 1.0)
+    private let spirit  = Color(red: 0.24, green: 0.84, blue: 0.75)
+    private let crimson = Color(red: 0.85, green: 0.19, blue: 0.38)
+    private let ember   = Color(red: 1.00, green: 0.42, blue: 0.21)
+    private let manaLt  = Color(red: 0.63, green: 0.50, blue: 1.00)
+
+    private let chapterInfo: [(numeral: String, label: String, color: Color)] = [
+        ("I",   "Decisions",  Color(red: 0.91, green: 0.72, blue: 0.29)),
+        ("II",  "Mistakes",   Color(red: 0.85, green: 0.19, blue: 0.38)),
+        ("III", "Learning",   Color(red: 1.00, green: 0.42, blue: 0.21)),
+        ("IV",  "Training",   Color(red: 0.63, green: 0.50, blue: 1.00)),
+        ("V",   "Discovery",  Color(red: 0.24, green: 0.84, blue: 0.75)),
+    ]
+
     var body: some View {
         VStack(spacing: 0) {
-            Spacer()
+            Spacer(minLength: 12)
 
-            Text("\"Intelligence is not born. It is trained.\"")
-                .font(.system(size: 20, weight: .light, design: .serif))
-                .italic()
-                .foregroundStyle(Color(red: 0.78, green: 0.73, blue: 1.0).opacity(0.42))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 36)
-                .tracking(1.0)
-                .opacity(quoteOpacity)
-                .padding(.bottom, 24)
-
-            Text("Neural Spellbook")
-                .font(.system(size: 42, weight: .bold, design: .serif))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.91, green: 0.72, blue: 0.29),
-                            Color(red: 0.63, green: 0.50, blue: 1.0),
-                            Color(red: 0.24, green: 0.84, blue: 0.75)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
+            // ── Title block ────────────────────────────────────────────────
+            VStack(spacing: 6) {
+                Text("Neural Spellbook")
+                    .font(.system(size: 44, weight: .black, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [gold, manaLt, spirit],
+                            startPoint: .leading, endPoint: .trailing
+                        )
                     )
-                )
-                .opacity(quoteOpacity)
+                    .multilineTextAlignment(.center)
 
-            Text("THE LIVING NETWORK")
-                .font(.custom("AvenirNext-DemiBold", size: 11))
-                .tracking(7)
-                .foregroundStyle(Color(red: 0.55, green: 0.43, blue: 0.16))
-                .opacity(quoteOpacity)
-                .padding(.bottom, 28)
+                Text("Discover how AI really thinks")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Color(red: 0.78, green: 0.73, blue: 1.0).opacity(0.55))
+                    .multilineTextAlignment(.center)
+            }
+            .opacity(showTitle ? 1 : 0)
+            .offset(y: showTitle ? 0 : 20)
+            .animation(.spring(response: 0.60, dampingFraction: 0.80), value: showTitle)
 
-            // Magic circle
+            Spacer(minLength: 30)
+
+            // ── Chapter preview pills ──────────────────────────────────────
+            HStack(spacing: 8) {
+                ForEach(Array(chapterInfo.enumerated()), id: \.offset) { i, chapter in
+                    VStack(spacing: 4) {
+                        Text(chapter.numeral)
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+                            .foregroundStyle(chapter.color)
+                        Text(chapter.label)
+                            .font(.custom("AvenirNext-DemiBold", size: 8))
+                            .tracking(0.5)
+                            .foregroundStyle(chapter.color.opacity(0.70))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(chapter.color.opacity(0.08),
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(chapter.color.opacity(0.24), lineWidth: 1)
+                    )
+                    .opacity(showChapters ? 1 : 0)
+                    .offset(y: showChapters ? 0 : 10)
+                    .animation(
+                        .spring(response: 0.45, dampingFraction: 0.78)
+                            .delay(Double(i) * 0.07),
+                        value: showChapters
+                    )
+                }
+            }
+            .padding(.horizontal, 20)
+
+            Spacer(minLength: 28)
+
+            // ── Magic circle ───────────────────────────────────────────────
             ZStack {
+                // Pulsing attention ring (behind circle)
+                if showCircle {
+                    PulsingRing(color: mana)
+                }
+
                 if !reduceMotion {
                     MagicCircleView()
                         .frame(width: 214, height: 214)
@@ -54,7 +104,6 @@ struct AwakeningSceneView: View {
                         .frame(width: 214, height: 214)
                 }
 
-                // Ripple on tap — each new UUID creates a fresh view that auto-animates on appear
                 if let id = rippleID {
                     RippleCircleView()
                         .id(id)
@@ -69,29 +118,92 @@ struct AwakeningSceneView: View {
                     onActivate()
                 }
             }
+            .opacity(showCircle ? 1 : 0)
+            .scaleEffect(showCircle ? 1 : 0.75)
+            .animation(.spring(response: 0.65, dampingFraction: 0.70), value: showCircle)
             .accessibilityLabel("Tap to begin the Neural Spellbook")
             .accessibilityAddTraits(.isButton)
 
-            Text("✦ tap the circle to begin ✦")
-                .font(.custom("AvenirNext-DemiBold", size: 11))
-                .tracking(3.5)
-                .foregroundStyle(Color(red: 0.36, green: 0.19, blue: 1.0).opacity(0.52))
-                .textCase(.uppercase)
-                .opacity(quoteOpacity)
-                .padding(.top, 14)
+            Spacer(minLength: 24)
 
-            Spacer()
+            // ── Tap hint ───────────────────────────────────────────────────
+            TapHintLabel()
+                .opacity(showHint ? 1 : 0)
+                .animation(.easeIn(duration: 0.40), value: showHint)
+
+            Spacer(minLength: 20)
+
+            // ── Meta info ──────────────────────────────────────────────────
+            Text("5 interactive chapters  ·  no coding required")
+                .font(.custom("AvenirNext-DemiBold", size: 11))
+                .tracking(1.2)
+                .foregroundStyle(Color(red: 0.55, green: 0.50, blue: 0.80).opacity(0.45))
+                .multilineTextAlignment(.center)
+                .opacity(showSub ? 1 : 0)
+                .animation(.easeIn(duration: 0.40), value: showSub)
+
+            Spacer(minLength: 16)
         }
         .padding(.horizontal, 20)
         .onAppear {
-            withAnimation(.easeOut(duration: 1.4).delay(0.2)) {
-                quoteOpacity = 1
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) { showTitle    = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) { showChapters = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) { showCircle   = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) { showHint     = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.00) { showSub      = true }
+        }
+    }
+}
+
+// MARK: - Pulsing attention ring (draws the eye to the circle)
+
+private struct PulsingRing: View {
+    let color: Color
+    @State private var scale: CGFloat = 1.0
+    @State private var opacity: Double = 0.40
+
+    var body: some View {
+        Circle()
+            .stroke(color, lineWidth: 1.5)
+            .frame(width: 214, height: 214)
+            .scaleEffect(scale)
+            .opacity(opacity)
+            .allowsHitTesting(false)
+            .onAppear {
+                withAnimation(
+                    .easeOut(duration: 1.8).repeatForever(autoreverses: false)
+                ) {
+                    scale = 1.55
+                    opacity = 0
+                }
+            }
+    }
+}
+
+// MARK: - Tap hint with blinking chevron
+
+private struct TapHintLabel: View {
+    @State private var blink = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "hand.tap.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(Color(red: 0.91, green: 0.72, blue: 0.29).opacity(blink ? 0.9 : 0.45))
+            Text("TAP TO BEGIN")
+                .font(.custom("AvenirNext-DemiBold", size: 14))
+                .tracking(3.5)
+                .foregroundStyle(Color(red: 0.91, green: 0.72, blue: 0.29).opacity(blink ? 0.9 : 0.45))
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                blink = true
             }
         }
     }
 }
 
-// MARK: - Ripple animation (new view per tap so onAppear always fires)
+// MARK: - Ripple animation
 
 private struct RippleCircleView: View {
     @State private var scale: CGFloat = 1.0

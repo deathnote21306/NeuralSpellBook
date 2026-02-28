@@ -6,11 +6,11 @@ struct IntroForwardSceneView: View {
     var body: some View {
         IntroBeatSceneTemplate(
             canvas: { IntroBeat0Canvas() },
-            tag: "Chapter I · Coming Up",
-            headline: "A chain of\nsimple decisions.",
-            bodyText: "Each node receives a number, multiplies it by a learned weight, and passes the result forward. Hundreds of these tiny steps, chained together, produce one final prediction.",
-            analogy: "✦ Like passing a whisper through a crowd — each person transforms it",
-            buttonTitle: "Begin Chapter I →",
+            chapterNumber: 1,
+            chapterTitle: "How AI\nMakes Decisions",
+            missionText: "Watch signals travel through the network — left to right, layer by layer — until a prediction appears.",
+            whyText: "Every AI on the planet works this way. ChatGPT, image recognition, self-driving cars — it all starts here.",
+            buttonTitle: "PLAY CHAPTER I",
             onBegin: onBegin
         )
     }

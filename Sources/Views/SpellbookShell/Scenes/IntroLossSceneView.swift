@@ -6,11 +6,11 @@ struct IntroLossSceneView: View {
     var body: some View {
         IntroBeatSceneTemplate(
             canvas: { IntroBeat1Canvas() },
-            tag: "Chapter II · Coming Up",
-            headline: "Try. Fail. Measure.\nThe error has a number.",
-            bodyText: "The network just made its first guess — and it was wrong. But how wrong, exactly? Loss is a single number that captures the distance between prediction and reality. Without it, there is nothing to correct.",
-            analogy: "✦ You can't improve what you can't measure",
-            buttonTitle: "Begin Chapter II →",
+            chapterNumber: 2,
+            chapterTitle: "Measuring\nthe Mistake",
+            missionText: "See exactly how wrong the AI's first guess was — and watch that error become a single number.",
+            whyText: "You can't fix what you can't measure. Without this number, learning is impossible.",
+            buttonTitle: "PLAY CHAPTER II",
             onBegin: onBegin
         )
     }

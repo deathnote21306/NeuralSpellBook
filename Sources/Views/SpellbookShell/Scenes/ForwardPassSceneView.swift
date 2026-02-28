@@ -187,13 +187,18 @@ struct ForwardPassSceneView: View {
                             .transition(.move(edge: .bottom).combined(with: .opacity))
 
                     } else if !didCast {
-                        Text("Input glyphs carry signals forward through hidden runes, each transforming what it receives — until a final sigil speaks the prediction.")
-                            .font(.system(size: 16, weight: .regular, design: .serif))
-                            .foregroundStyle(.white.opacity(0.68))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 28)
-                            .lineSpacing(4)
-                            .transition(.opacity)
+                        VStack(spacing: 6) {
+                            Text("Press the button below to send a signal through the network")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.90))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 24)
+                            Text("Watch the rays travel left → right, layer by layer")
+                                .font(.system(size: 13, weight: .regular))
+                                .foregroundStyle(Color(red: 0.91, green: 0.72, blue: 0.29).opacity(0.65))
+                                .multilineTextAlignment(.center)
+                        }
+                        .transition(.opacity)
                     }
                 }
                 .animation(.easeInOut(duration: 0.35), value: selectedNodeID)
@@ -201,15 +206,14 @@ struct ForwardPassSceneView: View {
                 .animation(.easeInOut(duration: 0.35), value: didCast)
 
                 if didCast && !isCasting && selectedNodeID == nil {
-                    VStack(spacing: 4) {
-                        Text("✦  TAP ANY NODE TO INSPECT IT  ✦")
+                    HStack(spacing: 6) {
+                        Image(systemName: "hand.tap.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color(red: 0.91, green: 0.72, blue: 0.29))
+                        Text("TAP ANY NODE TO INSPECT IT")
                             .font(.custom("AvenirNext-DemiBold", size: 12))
-                            .tracking(3.0)
-                            .foregroundStyle(Color(red: 0.91, green: 0.72, blue: 0.29).opacity(0.85))
-                        Text("Each node holds its activation value and role in the prediction")
-                            .font(.custom("AvenirNext-Regular", size: 13))
-                            .foregroundStyle(.white.opacity(0.45))
-                            .multilineTextAlignment(.center)
+                            .tracking(2.5)
+                            .foregroundStyle(Color(red: 0.91, green: 0.72, blue: 0.29))
                     }
                     .transition(.opacity)
                 }
@@ -217,7 +221,8 @@ struct ForwardPassSceneView: View {
                 // Main buttons
                 HStack(spacing: 10) {
                     SpellButton(title: "✦ Deep Dive", tone: .gold) { onOpenModal(.forward) }
-                    SpellButton(title: buttonTitle, tone: .mana) { castPrediction() }
+                    SpellButton(title: buttonTitle, tone: .mana,
+                                isPulsing: !didCast && !isCasting) { castPrediction() }
                 }
 
                 if didCast {

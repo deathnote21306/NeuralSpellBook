@@ -6,11 +6,11 @@ struct IntroHyperSceneView: View {
     var body: some View {
         IntroBeatSceneTemplate(
             canvas: { IntroBeat3Canvas() },
-            tag: "Chapter IV · Coming Up",
-            headline: "Three dials.\nInfinite consequences.",
-            bodyText: "The correction loop works — but how fast should it learn? How many examples at once? How many rounds? These are hyperparameters: the human choices that govern the entire training process. Get them wrong, and the network never converges.",
-            analogy: "✦ The most human part of machine learning",
-            buttonTitle: "Begin Chapter IV →",
+            chapterNumber: 4,
+            chapterTitle: "Training\nthe Trainer",
+            missionText: "Adjust 3 real settings — speed, batch size, rounds — and see how each one changes the entire learning outcome.",
+            whyText: "These choices are made by humans, not the AI. Get them wrong and training fails. Get them right and magic happens.",
+            buttonTitle: "PLAY CHAPTER IV",
             onBegin: onBegin
         )
     }

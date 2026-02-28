@@ -127,26 +127,30 @@ struct BackpropSceneView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
 
                     } else if ritualDone {
-                        VStack(spacing: 4) {
-                            Text("✦  TAP A LAYER TO SEE BLAME DISTRIBUTION  ✦")
+                        HStack(spacing: 6) {
+                            Image(systemName: "hand.tap.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color(red: 0.85, green: 0.19, blue: 0.38))
+                            Text("TAP A LAYER TO SEE HOW BLAME IS SHARED")
                                 .font(.custom("AvenirNext-DemiBold", size: 12))
-                                .tracking(2.5)
-                                .foregroundStyle(Color(red: 0.85, green: 0.19, blue: 0.38).opacity(0.85))
-                            Text("Error flows right to left — each layer absorbs a fraction of the total loss")
-                                .font(.custom("AvenirNext-Regular", size: 13))
-                                .foregroundStyle(.white.opacity(0.45))
-                                .multilineTextAlignment(.center)
+                                .tracking(2.0)
+                                .foregroundStyle(Color(red: 0.85, green: 0.19, blue: 0.38))
                         }
                         .transition(.opacity)
 
                     } else {
-                        Text("Backpropagation traces backwards through every connection to assign blame and correct each weight. Perform the ritual to see error flow.")
-                            .font(.system(size: 16, weight: .regular, design: .serif))
-                            .foregroundStyle(.white.opacity(0.70))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 24)
-                            .lineSpacing(4)
-                            .transition(.opacity)
+                        VStack(spacing: 6) {
+                            Text("Press the button below to trace the error backwards")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.90))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 24)
+                            Text("Watch the red rays travel right → left, assigning blame")
+                                .font(.system(size: 13, weight: .regular))
+                                .foregroundStyle(Color(red: 0.85, green: 0.19, blue: 0.38).opacity(0.65))
+                                .multilineTextAlignment(.center)
+                        }
+                        .transition(.opacity)
                     }
                 }
                 .animation(.easeInOut(duration: 0.35), value: isAnimating)
@@ -158,7 +162,8 @@ struct BackpropSceneView: View {
                     SpellButton(title: "✦ Why This Works", tone: .gold) { onOpenModal(.backprop) }
                     SpellButton(
                         title: isAnimating ? "🩸 Ritual in progress..." : (ritualDone ? "↺ Replay" : "🩸 Perform Ritual"),
-                        tone: .danger
+                        tone: .danger,
+                        isPulsing: !ritualDone && !isAnimating
                     ) { performRitual() }
                 }
 
